@@ -326,7 +326,16 @@ function updateMsgBadge() {
   if(b){b.style.display=noLeidos>0?'inline':'none';b.textContent=noLeidos;}
 }
 
-var TITLES = {dashboard:'Dashboard',caja:'Estado de Caja',consorcios:'Consorcios',gastos:'Gastos',ingresos:'Ingresos y Deudas',morosos:'Morosos',liquidacion:'Liquidación Mensual',mantenimiento:'Mantenimiento',recordatorios:'Recordatorios',mensajes:'Mensajes',comunicaciones:'Comunicaciones',clientes:'Nuevos Clientes',    portal:'Portal Propietarios'};
+function sortProps(ps) {
+  return ps.slice().sort(function(a,b){
+    var ua=(a.piso_dpto||a.unidad||'').toLowerCase();
+    var ub=(b.piso_dpto||b.unidad||'').toLowerCase();
+    var na=parseInt(ua.match(/\d+/));
+    var nb=parseInt(ub.match(/\d+/));
+    if(!isNaN(na)&&!isNaN(nb)&&na!==nb) return na-nb;
+    return ua.localeCompare(ub,'es');
+  });
+}dashboard:'Dashboard',caja:'Estado de Caja',consorcios:'Consorcios',gastos:'Gastos',ingresos:'Ingresos y Deudas',morosos:'Morosos',liquidacion:'Liquidación Mensual',mantenimiento:'Mantenimiento',recordatorios:'Recordatorios',mensajes:'Mensajes',comunicaciones:'Comunicaciones',clientes:'Nuevos Clientes',    portal:'Portal Propietarios'};
 
 function nav(page, back) {
   prevPage = back||null;
@@ -389,15 +398,7 @@ function generarLiquidacion() {
   var mes=document.getElementById('liq-mes').value;
   if(!cid||!mes) return toast('Seleccioná consorcio y período');
   var cons=C.consorcios.find(function(x){return x.id===cid;});
-  var ps=C.propietarios.filter(function(p){return p.consorcio_id===cid;}).sort(function(a,b){
-    var ua=(a.piso_dpto||a.unidad||'').toLowerCase();
-    var ub=(b.piso_dpto||b.unidad||'').toLowerCase();
-    // extraer número de piso
-    var na=parseInt(ua.match(/\d+/));
-    var nb=parseInt(ub.match(/\d+/));
-    if(!isNaN(na)&&!isNaN(nb)&&na!==nb) return na-nb;
-    return ua.localeCompare(ub,'es');
-  });
+  var ps=sortProps(C.propietarios.filter(function(p){return p.consorcio_id===cid;}));
   var pids=ps.map(function(p){return p.id;});
   var gastosM=C.gastos.filter(function(g){return g.consorcio_id===cid&&g.fecha&&g.fecha.slice(0,7)===mes;});
   var gastosOrd=gastosM.filter(function(g){return g.tipo_gasto!=='extraordinario';});
@@ -787,7 +788,7 @@ function pgIngresos() {
     dom()<CONFIG.diaInteres?
     '<div class="al as">ℹ Intereses se activan el día '+CONFIG.diaInteres+' del mes (tasa: '+CONFIG.tasaInteres+'%)</div>':
     '<div class="al aw">⚠ Intereses por mora activos: '+CONFIG.tasaInteres+'% desde el día '+CONFIG.diaInteres+'</div>';
-  var rows=C.propietarios.map(function(p){
+  var rows=sortProps(C.propietarios).map(function(p){
     var d=calcDebt(p.id);
     var c=C.consorcios.find(function(x){return x.id===p.consorcio_id;});
     var u=C.ingresos.filter(function(i){return i.propietario_id===p.id;}).sort(function(a,b){return b.fecha>a.fecha?1:-1;})[0];
@@ -1086,7 +1087,7 @@ function guardarConfig() {
 
 // ===== PORTAL =====
 function pgPortal() {
-  var items=C.propietarios.map(function(p){
+  var items=sortProps(C.propietarios).map(function(p){
     var c=C.consorcios.find(function(x){return x.id===p.consorcio_id;});
     var d=calcDebt(p.id);
     var codigo=p.id.slice(-6).toUpperCase();
