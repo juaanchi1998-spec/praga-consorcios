@@ -148,6 +148,7 @@ td.p{color:var(--text);font-weight:500}
       <div class="ni" onclick="nav('mensajes')">✉ Mensajes <span id="msg-badge" style="display:none;background:var(--red);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">0</span></div>
       <div class="ni" onclick="nav('comunicaciones')">💬 Comunicaciones</div>
       <div class="ni" onclick="nav('clientes')">👤 Nuevos Clientes</div>
+      <div class="ni" onclick="nav('configuracion')">⚙ Configuración</div>
       <div class="ns">Accesos</div>
       <div class="ni" onclick="nav('portal')">🔑 Portal Propietarios</div>
     </nav>
@@ -173,10 +174,23 @@ td.p{color:var(--text);font-weight:500}
 <div id="toast" class="toast" style="display:none"></div>
 
 <script>
-var SURL = 'https://ylsakdugmhsddapodlfs.supabase.co';
+var CONFIG = {aplicarIntereses: true, tasaInteres: 10, diaInteres: 10};
+
+function loadConfig() {
+  try {
+    var s = localStorage.getItem('praga_config');
+    if (s) CONFIG = JSON.parse(s);
+  } catch(e) {}
+}
+
+function saveConfig() {
+  try { localStorage.setItem('praga_config', JSON.stringify(CONFIG)); } catch(e) {}
+}
+
+loadConfig();
 var SKEY = 'sb_publishable_q1b1d0XL5KZqH4SXSWrgFQ_FWvt6yQB';
+var SURL = 'https://ylsakdugmhsddapodlfs.supabase.co';
 var ADMINS = {juanchi:'juanchi98', facu:'facu98'};
-var currentUser = null;
 var prevPage = null;
 var currentConsorcioId = null;
 var C = {consorcios:[],propietarios:[],gastos:[],ingresos:[],mantenimiento:[],recordatorios:[],comunicaciones:[],clientes:[],mensajes:[]};
@@ -285,7 +299,8 @@ function calcDebt(pid) {
   C.gastos.forEach(function(x){var d=x.distribuciones||{};if(d[pid])g+=Number(d[pid]);});
   var p=C.ingresos.filter(function(i){return i.propietario_id===pid;}).reduce(function(s,i){return s+Number(i.monto);},0);
   var s=g-p; if(s<=0) return {total:0,intereses:0,saldo:0};
-  var it=dom()>=10?s*0.1:0;
+  var aplicar=CONFIG.aplicarIntereses&&dom()>=CONFIG.diaInteres;
+  var it=aplicar?s*(CONFIG.tasaInteres/100):0;
   return {total:Math.round(s+it),intereses:Math.round(it),saldo:Math.round(s)};
 }
 
@@ -311,14 +326,14 @@ function updateMsgBadge() {
   if(b){b.style.display=noLeidos>0?'inline':'none';b.textContent=noLeidos;}
 }
 
-var TITLES = {dashboard:'Dashboard',caja:'Estado de Caja',consorcios:'Consorcios',gastos:'Gastos',ingresos:'Ingresos y Deudas',morosos:'Morosos',liquidacion:'Liquidación Mensual',mantenimiento:'Mantenimiento',recordatorios:'Recordatorios',mensajes:'Mensajes',comunicaciones:'Comunicaciones',clientes:'Nuevos Clientes',portal:'Portal Propietarios'};
+var TITLES = {dashboard:'Dashboard',caja:'Estado de Caja',consorcios:'Consorcios',gastos:'Gastos',ingresos:'Ingresos y Deudas',morosos:'Morosos',liquidacion:'Liquidación Mensual',mantenimiento:'Mantenimiento',recordatorios:'Recordatorios',mensajes:'Mensajes',comunicaciones:'Comunicaciones',clientes:'Nuevos Clientes',    portal:'Portal Propietarios'};
 
 function nav(page, back) {
   prevPage = back||null;
   document.querySelectorAll('.ni').forEach(function(n){n.classList.toggle('active',n.getAttribute('onclick')==="nav('"+page+"')");});
   document.getElementById('pt-text').textContent = TITLES[page]||page;
   document.getElementById('back-wrap').style.display = back?'inline':'none';
-  var pages = {dashboard:pgDashboard,caja:pgCaja,consorcios:pgConsorcios,gastos:pgGastos,ingresos:pgIngresos,morosos:pgMorosos,liquidacion:pgLiquidacion,mantenimiento:pgManto,recordatorios:pgRec,mensajes:pgMensajes,comunicaciones:pgComm,clientes:pgClientes,portal:pgPortal};
+  var pages = {dashboard:pgDashboard,caja:pgCaja,consorcios:pgConsorcios,gastos:pgGastos,ingresos:pgIngresos,morosos:pgMorosos,liquidacion:pgLiquidacion,mantenimiento:pgManto,recordatorios:pgRec,mensajes:pgMensajes,comunicaciones:pgComm,clientes:pgClientes,    configuracion:pgConfiguracion,portal:pgPortal};
   document.getElementById('content').innerHTML = (pages[page]||pgDashboard)();
   updateAlerts();
 }
@@ -759,7 +774,11 @@ function saveGasto() {
 
 // ===== INGRESOS =====
 function pgIngresos() {
-  var info=dom()<10?'<div class="al as">ℹ Intereses se activan el día 10 del mes</div>':'<div class="al aw">⚠ Intereses por mora activos: 10% desde el día 10</div>';
+  var info=!CONFIG.aplicarIntereses?
+    '<div class="al as">✓ Intereses desactivados — no se aplican cargos por mora</div>':
+    dom()<CONFIG.diaInteres?
+    '<div class="al as">ℹ Intereses se activan el día '+CONFIG.diaInteres+' del mes (tasa: '+CONFIG.tasaInteres+'%)</div>':
+    '<div class="al aw">⚠ Intereses por mora activos: '+CONFIG.tasaInteres+'% desde el día '+CONFIG.diaInteres+'</div>';
   var rows=C.propietarios.map(function(p){
     var d=calcDebt(p.id);
     var c=C.consorcios.find(function(x){return x.id===p.consorcio_id;});
@@ -1014,6 +1033,47 @@ function nextCliente(id,est) {
   fetch(SURL+'/rest/v1/clientes?id=eq.'+id,{method:'PATCH',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json'},body:JSON.stringify({estado:nx})})
   .then(function(){var c=C.clientes.find(function(x){return x.id===id;});if(c)c.estado=nx;nav('clientes');})
   .catch(function(){toast('Error');});
+}
+
+// ===== CONFIGURACION =====
+function pgConfiguracion() {
+  return '<div class="card"><div class="ct" style="margin-bottom:20px">⚙ Configuración general</div>'+
+    '<div style="border-bottom:1px solid #2a2a2a;padding-bottom:20px;margin-bottom:20px">'+
+    '<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:14px">💰 Intereses por mora</div>'+
+    '<div class="fr">'+
+    '<div class="fg"><label>Aplicar intereses por mora</label>'+
+    '<select id="cfg-aplicar" onchange="toggleInteresConfig()">'+
+    '<option value="1"'+(CONFIG.aplicarIntereses?' selected':'')+'>Sí, aplicar intereses</option>'+
+    '<option value="0"'+(!CONFIG.aplicarIntereses?' selected':'')+'>No, sin intereses</option>'+
+    '</select></div>'+
+    '<div class="fg" id="cfg-tasa-wrap" style="'+(CONFIG.aplicarIntereses?'':'opacity:.4;pointer-events:none')+'"><label>Tasa de interés (%)</label>'+
+    '<input id="cfg-tasa" type="number" step="0.1" value="'+CONFIG.tasaInteres+'" min="0" max="100"></div>'+
+    '<div class="fg" id="cfg-dia-wrap" style="'+(CONFIG.aplicarIntereses?'':'opacity:.4;pointer-events:none')+'"><label>Aplicar a partir del día</label>'+
+    '<input id="cfg-dia" type="number" value="'+CONFIG.diaInteres+'" min="1" max="31"></div>'+
+    '</div>'+
+    '<div id="cfg-info" class="al '+(CONFIG.aplicarIntereses?'aw':'as')+'" style="margin-bottom:0">'+
+    (CONFIG.aplicarIntereses?
+      '⚠ Se aplica '+CONFIG.tasaInteres+'% de interés sobre saldos pendientes a partir del día '+CONFIG.diaInteres+' de cada mes.':
+      '✓ Los intereses están desactivados. No se aplican cargos por mora.')+
+    '</div></div>'+
+    '<button class="btn bg" onclick="guardarConfig()">✓ Guardar configuración</button></div>';
+}
+
+function toggleInteresConfig() {
+  var aplicar=document.getElementById('cfg-aplicar').value==='1';
+  document.getElementById('cfg-tasa-wrap').style.opacity=aplicar?'1':'0.4';
+  document.getElementById('cfg-tasa-wrap').style.pointerEvents=aplicar?'auto':'none';
+  document.getElementById('cfg-dia-wrap').style.opacity=aplicar?'1':'0.4';
+  document.getElementById('cfg-dia-wrap').style.pointerEvents=aplicar?'auto':'none';
+}
+
+function guardarConfig() {
+  CONFIG.aplicarIntereses = document.getElementById('cfg-aplicar').value==='1';
+  CONFIG.tasaInteres = parseFloat(document.getElementById('cfg-tasa').value)||10;
+  CONFIG.diaInteres = parseInt(document.getElementById('cfg-dia').value)||10;
+  saveConfig();
+  nav('configuracion');
+  toast('✓ Configuración guardada');
 }
 
 // ===== PORTAL =====
