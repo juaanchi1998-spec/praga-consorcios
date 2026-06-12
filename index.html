@@ -328,12 +328,18 @@ function updateMsgBadge() {
 
 function sortProps(ps) {
   return ps.slice().sort(function(a,b){
-    var ua=(a.piso_dpto||a.unidad||'').toLowerCase();
-    var ub=(b.piso_dpto||b.unidad||'').toLowerCase();
-    var na=parseInt(ua.match(/\d+/));
-    var nb=parseInt(ub.match(/\d+/));
-    if(!isNaN(na)&&!isNaN(nb)&&na!==nb) return na-nb;
-    return ua.localeCompare(ub,'es');
+    var ua=(a.piso_dpto||a.unidad||'').trim();
+    var ub=(b.piso_dpto||b.unidad||'').trim();
+    // extraer todos los números del string
+    var matchA=ua.match(/\d+/g);
+    var matchB=ub.match(/\d+/g);
+    var na=matchA?parseInt(matchA[0]):9999;
+    var nb=matchB?parseInt(matchB[0]):9999;
+    if(na!==nb) return na-nb;
+    // mismo piso: ordenar por letra de departamento
+    var la=ua.replace(/[^a-zA-Z]/g,'').toLowerCase();
+    var lb=ub.replace(/[^a-zA-Z]/g,'').toLowerCase();
+    return la.localeCompare(lb,'es');
   });
 }dashboard:'Dashboard',caja:'Estado de Caja',consorcios:'Consorcios',gastos:'Gastos',ingresos:'Ingresos y Deudas',morosos:'Morosos',liquidacion:'Liquidación Mensual',mantenimiento:'Mantenimiento',recordatorios:'Recordatorios',mensajes:'Mensajes',comunicaciones:'Comunicaciones',clientes:'Nuevos Clientes',    portal:'Portal Propietarios'};
 
