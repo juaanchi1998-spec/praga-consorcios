@@ -296,9 +296,6 @@ function calcDebt(pid){
   var s=g-p;if(s<=0)return {total:0,intereses:0,saldo:0};
   var it=CONFIG.aplicarIntereses&&dom()>=CONFIG.diaInteres?s*(CONFIG.tasaInteres/100):0;
   return {total:Math.round(s+it),intereses:Math.round(it),saldo:Math.round(s)};
-}
-
-function calcCaja(cid){
   var pids=C.propietarios.filter(function(p){return p.consorcio_id===cid;}).map(function(p){return p.id;});
   var ing=C.ingresos.filter(function(i){return pids.indexOf(i.propietario_id)>=0;}).reduce(function(s,i){return s+Number(i.monto);},0);
   var gas=C.gastos.filter(function(g){return g.consorcio_id===cid;}).reduce(function(s,g){return s+Number(g.monto);},0);
