@@ -315,21 +315,7 @@ function updateMsgBadge(){
   if(b){b.style.display=n>0?'inline':'none';b.textContent=n;}
 }
 
-var TITLES={};
-TITLES['dashboard']='Dashboard';
-TITLES['caja']='Estado de Caja';
-TITLES['consorcios']='Consorcios';
-TITLES['gastos']='Gastos';
-TITLES['ingresos']='Ingresos y Deudas';
-TITLES['morosos']='Morosos';
-TITLES['liquidacion']='Liquidacion';
-TITLES['mantenimiento']='Mantenimiento';
-TITLES['recordatorios']='Recordatorios';
-TITLES['mensajes']='Mensajes';
-TITLES['comunicaciones']='Comunicaciones';
-TITLES['clientes']='Nuevos Clientes';
-TITLES['configuracion']='Configuracion';
-TITLES['portal']='Portal Propietarios';
+var TITLES={dashboard:'Dashboard',caja:'Estado de Caja',consorcios:'Consorcios',gastos:'Gastos',ingresos:'Ingresos y Deudas',morosos:'Morosos',liquidacion:'Liquidacion',mantenimiento:'Mantenimiento',recordatorios:'Recordatorios',mensajes:'Mensajes',comunicaciones:'Comunicaciones',clientes:'Nuevos Clientes',configuracion:'Configuracion',portal:'Portal Propietarios'};
 
 function nav(page,back){
   prevPage=back||null;
