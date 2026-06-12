@@ -389,7 +389,15 @@ function generarLiquidacion() {
   var mes=document.getElementById('liq-mes').value;
   if(!cid||!mes) return toast('Seleccioná consorcio y período');
   var cons=C.consorcios.find(function(x){return x.id===cid;});
-  var ps=C.propietarios.filter(function(p){return p.consorcio_id===cid;});
+  var ps=C.propietarios.filter(function(p){return p.consorcio_id===cid;}).sort(function(a,b){
+    var ua=(a.piso_dpto||a.unidad||'').toLowerCase();
+    var ub=(b.piso_dpto||b.unidad||'').toLowerCase();
+    // extraer número de piso
+    var na=parseInt(ua.match(/\d+/));
+    var nb=parseInt(ub.match(/\d+/));
+    if(!isNaN(na)&&!isNaN(nb)&&na!==nb) return na-nb;
+    return ua.localeCompare(ub,'es');
+  });
   var pids=ps.map(function(p){return p.id;});
   var gastosM=C.gastos.filter(function(g){return g.consorcio_id===cid&&g.fecha&&g.fecha.slice(0,7)===mes;});
   var gastosOrd=gastosM.filter(function(g){return g.tipo_gasto!=='extraordinario';});
@@ -469,7 +477,7 @@ function tabUnidades(cid) {
   var rows=ps.map(function(p){
     var d=calcDebt(p.id);
     var ult=C.ingresos.filter(function(i){return i.propietario_id===p.id;}).sort(function(a,b){return b.fecha>a.fecha?1:-1;})[0];
-    return '<tr><td class="p">'+(p.piso_dpto||p.unidad||'-')+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar">'+p.nombre.slice(0,2).toUpperCase()+'</div><div><div style="font-size:13px;font-weight:500;color:var(--text)">'+p.nombre+'</div><div style="font-size:11px;color:var(--text3)">'+(p.email||'')+'</div></div></div></td><td>'+(p.alquilado?'<span class="pill po">Alquilado</span><div style="font-size:11px;color:var(--text3);margin-top:3px">'+(p.inquilino||'')+'</div>':'<span class="pill pg">Propio</span>')+'</td><td>'+(p.telefono||'-')+'</td><td>'+(p.pct?p.pct+'%':'-')+'</td><td style="color:'+(d.total>0?'var(--red)':'var(--green)')+';font-weight:500">'+money(d.total)+'</td><td>'+(ult?ult.fecha:'-')+'</td><td><button class="btn bgr bs" onclick="mPago(\''+p.id+'\')">💰</button> <button class="btn bo bs" onclick="mEditProp(\''+p.id+'\')">✏</button> <button class="btn bd bs" onclick="delP(\''+p.id+'\',\''+cid+'\')">🗑</button></td></tr>';
+    return '<tr><td class="p">'+(p.piso_dpto||p.unidad||'-')+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar">'+p.nombre.slice(0,2).toUpperCase()+'</div><div><div style="font-size:13px;font-weight:500;color:var(--text)">'+p.nombre+'</div><div style="font-size:11px;color:var(--text3)">'+(p.email||'')+'</div></div></div></td><td>'+(p.alquilado?'<span class="pill po">Alquilado</span><div style="font-size:11px;color:var(--text3);margin-top:3px">'+(p.inquilino||'')+( p.inquilino_tel?' · '+p.inquilino_tel:'')+'</div>':'<span class="pill pg">Propio</span>')+'</td><td>'+(p.telefono||'-')+'</td><td>'+(p.pct?p.pct+'%':'-')+'</td><td style="color:'+(d.total>0?'var(--red)':'var(--green)')+';font-weight:500">'+money(d.total)+'</td><td>'+(ult?ult.fecha:'-')+'</td><td><button class="btn bgr bs" onclick="mPago(\''+p.id+'\')">💰</button> <button class="btn bo bs" onclick="mEditProp(\''+p.id+'\')">✏</button> <button class="btn bd bs" onclick="delP(\''+p.id+'\',\''+cid+'\')">🗑</button></td></tr>';
   }).join('');
   return '<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn bg" onclick="mAddProp(\''+cid+'\')">+ Agregar unidad</button></div>'+(ps.length?'<div style="overflow-x:auto"><table><thead><tr><th>Unidad</th><th>Propietario</th><th>Estado</th><th>Teléfono</th><th>%</th><th>Deuda</th><th>Último pago</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty">Sin unidades</div>');
 }
@@ -554,7 +562,7 @@ function delCons(id,e) {
 function mAddProp(cid) {
   var opts=C.consorcios.map(function(c){return '<option value="'+c.id+'"'+(cid&&c.id===cid?' selected':'')+'>'+c.nombre+'</option>';}).join('');
   if(!opts) return toast('Primero creá un consorcio');
-  openM('<div class="mt">Nueva Unidad <button class="btn bo bs" onclick="closeM()">✕</button></div><div class="fr"><div class="fg"><label>Nombre del propietario</label><input id="pn" placeholder="Juan García"></div><div class="fg"><label>Consorcio</label><select id="pc">'+opts+'</select></div></div><div class="fr"><div class="fg"><label>Piso y departamento</label><input id="ppd" placeholder="4° D"></div><div class="fg"><label>Teléfono</label><input id="pt2" placeholder="264..."></div></div><div class="fr"><div class="fg"><label>Email</label><input id="pe"></div><div class="fg"><label>% de expensas</label><input id="pp" type="number" step="0.01" placeholder="8.33"></div></div><div class="fr"><div class="fg"><label>Estado</label><select id="palq"><option value="0">Ocupada por propietario</option><option value="1">Alquilada</option></select></div><div class="fg"><label>Inquilino (si aplica)</label><input id="pinq" placeholder="María López"></div></div><input type="hidden" id="p-back" value="'+(cid||'')+'"><button class="btn bg" onclick="saveProp()" style="width:100%;margin-top:8px">✓ Guardar</button>');
+  openM('<div class="mt">Nueva Unidad <button class="btn bo bs" onclick="closeM()">✕</button></div><div class="fr"><div class="fg"><label>Nombre del propietario</label><input id="pn" placeholder="Juan García"></div><div class="fg"><label>Consorcio</label><select id="pc">'+opts+'</select></div></div><div class="fr"><div class="fg"><label>Piso y departamento</label><input id="ppd" placeholder="4° D"></div><div class="fg"><label>Teléfono</label><input id="pt2" placeholder="264..."></div></div><div class="fr"><div class="fg"><label>Email</label><input id="pe"></div><div class="fg"><label>% de expensas</label><input id="pp" type="number" step="0.01" placeholder="8.33"></div></div><div class="fr"><div class="fg"><label>Estado</label><select id="palq"><option value="0">Ocupada por propietario</option><option value="1">Alquilada</option></select></div><div class="fg"><label>Nombre del inquilino</label><input id="pinq" placeholder="María López"></div></div><div class="fr"><div class="fg"><label>Teléfono del inquilino</label><input id="pinqtel" placeholder="264..."></div></div><input type="hidden" id="p-back" value="'+(cid||'')+'"><button class="btn bg" onclick="saveProp()" style="width:100%;margin-top:8px">✓ Guardar</button>');
 }
 
 function saveProp() {
@@ -562,7 +570,7 @@ function saveProp() {
   if(!n) return toast('Ingresá el nombre');
   var back=document.getElementById('p-back').value;
   var pd=document.getElementById('ppd').value;
-  var o={id:uid(),nombre:n,consorcio_id:document.getElementById('pc').value,piso_dpto:pd,unidad:pd,telefono:document.getElementById('pt2').value,email:document.getElementById('pe').value,pct:parseFloat(document.getElementById('pp').value)||0,alquilado:document.getElementById('palq').value==='1',inquilino:document.getElementById('pinq').value};
+  var o={id:uid(),nombre:n,consorcio_id:document.getElementById('pc').value,piso_dpto:pd,unidad:pd,telefono:document.getElementById('pt2').value,email:document.getElementById('pe').value,pct:parseFloat(document.getElementById('pp').value)||0,alquilado:document.getElementById('palq').value==='1',inquilino:document.getElementById('pinq').value,inquilino_tel:document.getElementById('pinqtel').value};
   fetch(SURL+'/rest/v1/propietarios',{method:'POST',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(o)})
   .then(function(r){
     if(!r.ok) return r.text().then(function(e){throw new Error(e);});
@@ -577,12 +585,12 @@ function saveProp() {
 function mEditProp(pid) {
   var p=C.propietarios.find(function(x){return x.id===pid;});
   var opts=C.consorcios.map(function(c){return '<option value="'+c.id+'"'+(c.id===p.consorcio_id?' selected':'')+'>'+c.nombre+'</option>';}).join('');
-  openM('<div class="mt">Editar Unidad <button class="btn bo bs" onclick="closeM()">✕</button></div><div class="fr"><div class="fg"><label>Nombre</label><input id="pn" value="'+p.nombre+'"></div><div class="fg"><label>Consorcio</label><select id="pc">'+opts+'</select></div></div><div class="fr"><div class="fg"><label>Piso y dpto</label><input id="ppd" value="'+(p.piso_dpto||p.unidad||'')+'"></div><div class="fg"><label>Teléfono</label><input id="pt2" value="'+(p.telefono||'')+'"></div></div><div class="fr"><div class="fg"><label>Email</label><input id="pe" value="'+(p.email||'')+'"></div><div class="fg"><label>% expensas</label><input id="pp" type="number" step="0.01" value="'+(p.pct||0)+'"></div></div><div class="fr"><div class="fg"><label>Estado</label><select id="palq"><option value="0"'+(!p.alquilado?' selected':'')+'>Ocupada por propietario</option><option value="1"'+(p.alquilado?' selected':'')+'>Alquilada</option></select></div><div class="fg"><label>Inquilino</label><input id="pinq" value="'+(p.inquilino||'')+'"></div></div><button class="btn bg" onclick="updateProp(\''+pid+'\')" style="width:100%;margin-top:8px">✓ Guardar cambios</button>');
+  openM('<div class="mt">Editar Unidad <button class="btn bo bs" onclick="closeM()">✕</button></div><div class="fr"><div class="fg"><label>Nombre</label><input id="pn" value="'+p.nombre+'"></div><div class="fg"><label>Consorcio</label><select id="pc">'+opts+'</select></div></div><div class="fr"><div class="fg"><label>Piso y dpto</label><input id="ppd" value="'+(p.piso_dpto||p.unidad||'')+'"></div><div class="fg"><label>Teléfono</label><input id="pt2" value="'+(p.telefono||'')+'"></div></div><div class="fr"><div class="fg"><label>Email</label><input id="pe" value="'+(p.email||'')+'"></div><div class="fg"><label>% expensas</label><input id="pp" type="number" step="0.01" value="'+(p.pct||0)+'"></div></div><div class="fr"><div class="fg"><label>Estado</label><select id="palq"><option value="0"'+(!p.alquilado?' selected':'')+'>Ocupada por propietario</option><option value="1"'+(p.alquilado?' selected':'')+'>Alquilada</option></select></div><div class="fg"><label>Nombre inquilino</label><input id="pinq" value="'+(p.inquilino||'')+'"></div></div><div class="fr"><div class="fg"><label>Teléfono inquilino</label><input id="pinqtel" value="'+(p.inquilino_tel||'')+'"></div></div><button class="btn bg" onclick="updateProp(\''+pid+'\')" style="width:100%;margin-top:8px">✓ Guardar cambios</button>');
 }
 
 function updateProp(pid) {
   var pd=document.getElementById('ppd').value;
-  var o={nombre:document.getElementById('pn').value.trim(),consorcio_id:document.getElementById('pc').value,piso_dpto:pd,unidad:pd,telefono:document.getElementById('pt2').value,email:document.getElementById('pe').value,pct:parseFloat(document.getElementById('pp').value)||0,alquilado:document.getElementById('palq').value==='1',inquilino:document.getElementById('pinq').value};
+  var o={nombre:document.getElementById('pn').value.trim(),consorcio_id:document.getElementById('pc').value,piso_dpto:pd,unidad:pd,telefono:document.getElementById('pt2').value,email:document.getElementById('pe').value,pct:parseFloat(document.getElementById('pp').value)||0,alquilado:document.getElementById('palq').value==='1',inquilino:document.getElementById('pinq').value,inquilino_tel:document.getElementById('pinqtel').value};
   fetch(SURL+'/rest/v1/propietarios?id=eq.'+pid,{method:'PATCH',headers:{'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json'},body:JSON.stringify(o)})
   .then(function(r){
     if(!r.ok) return r.text().then(function(e){throw new Error(e);});
